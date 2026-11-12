@@ -1,0 +1,23 @@
+# Secrets & local env
+.env
+*.env.local
+.env.*.local
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Node / Frontend
+**/node_modules/
+**/dist/
+**/build/
+
+# Java / Maven
+**/target/
+**/uploads/
+*.log
