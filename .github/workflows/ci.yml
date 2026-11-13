@@ -18,6 +18,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+          cache-dependency-path: 'BackendLFMS/pom.xml'
       - name: Compile Backend
         run: |
           cd BackendLFMS
