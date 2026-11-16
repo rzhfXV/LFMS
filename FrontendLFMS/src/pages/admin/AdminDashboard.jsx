@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
-import { Shield, FileCheck, CheckCircle2, XCircle, Download, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { Shield, FileCheck, CheckCircle2, XCircle, Download, FileText, AlertCircle, RefreshCw, PackageCheck } from 'lucide-react';
 
 export const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [pendingReports, setPendingReports] = useState([]);
   const [pendingClaims, setPendingClaims] = useState([]);
+  const [approvedClaims, setApprovedClaims] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('reports');
   const [loading, setLoading] = useState(true);
@@ -25,15 +26,17 @@ export const AdminDashboard = () => {
   const fetchAdminData = async () => {
     setLoading(true);
     try {
-      const [dashRes, repRes, claimRes, logRes] = await Promise.all([
+      const [dashRes, repRes, claimRes, approvedClaimRes, logRes] = await Promise.all([
         apiClient.get('/admin/dashboard'),
         apiClient.get('/admin/reports?status=PENDING_REVIEW&size=20'),
         apiClient.get('/admin/claims?status=PENDING&size=20'),
+        apiClient.get('/admin/claims?status=APPROVED&size=20'),
         apiClient.get('/admin/audit-logs?size=15'),
       ]);
       setStats(dashRes.data);
       setPendingReports(repRes.data?.content || []);
       setPendingClaims(claimRes.data?.content || []);
+      setApprovedClaims(approvedClaimRes.data?.content || []);
       setAuditLogs(logRes.data?.content || []);
     } catch (err) {
       console.error(err);
@@ -69,6 +72,16 @@ export const AdminDashboard = () => {
       fetchAdminData();
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal memproses klaim.');
+    }
+  };
+
+  const handleCompleteClaim = async (claimId) => {
+    if (!window.confirm('Konfirmasi bahwa barang telah diserahkan kepada pemiliknya?')) return;
+    try {
+      await apiClient.patch(`/admin/claims/${claimId}/complete`);
+      fetchAdminData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal menyelesaikan serah terima.');
     }
   };
 
@@ -168,6 +181,20 @@ export const AdminDashboard = () => {
             Pemeriksaan Klaim ({pendingClaims.length})
           </button>
           <button
+            onClick={() => setActiveTab('handover')}
+            className={`pb-4 border-b-2 transition ${
+              activeTab === 'handover'
+                ? 'border-emerald-600 text-emerald-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Serah Terima Barang {approvedClaims.length > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-emerald-500 text-white rounded-full">
+                {approvedClaims.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('logs')}
             className={`pb-4 border-b-2 transition ${
               activeTab === 'logs'
@@ -264,7 +291,55 @@ export const AdminDashboard = () => {
             </div>
           )}
 
-          {/* TAB 3: AUDIT LOGS */}
+          {/* TAB 3: APPROVED CLAIMS — HANDOVER */}
+          {activeTab === 'handover' && (
+            <div className="space-y-4">
+              {approvedClaims.length === 0 ? (
+                <div className="text-center py-12">
+                  <PackageCheck className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500">Tidak ada klaim yang menunggu serah terima.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {approvedClaims.map((c) => (
+                    <div key={c.id} className="py-4 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                      <div className="space-y-1 max-w-2xl">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-emerald-100 text-emerald-700">
+                            Klaim Disetujui
+                          </span>
+                          <span className="text-xs text-gray-400">Klaim #{c.id}</span>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Barang Temuan: <span className="font-bold text-gray-800">{c.foundReportTitle}</span>
+                        </div>
+                        <p className="text-xs text-gray-700">
+                          <strong>Pengklaim:</strong> {c.claimantName} ({c.claimantEmail})
+                        </p>
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 mt-1">
+                          <strong>Bukti yang Diajukan:</strong> {c.evidence}
+                        </div>
+                        {c.adminNote && (
+                          <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900 mt-1">
+                            <strong>Catatan Admin:</strong> {c.adminNote}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleCompleteClaim(c.id)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition"
+                      >
+                        <PackageCheck className="w-4 h-4" />
+                        Konfirmasi Serah Terima
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: AUDIT LOGS */}
           {activeTab === 'logs' && (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-gray-600">
