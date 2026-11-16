@@ -9,9 +9,10 @@ Aplikasi web terintegrasi untuk pelaporan barang hilang, publikasi barang temuan
 | Komponen | Teknologi | Hosting / Platform |
 |----------|-----------|-------------------|
 | **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons | **Cloudflare Pages** |
-| **Backend** | Spring Boot 3.3.5 (Java 21), Spring Security, JWT, Bucket4j | **Render** atau **Railway** |
+| **Backend** | Spring Boot 3.3.5 (Java 21), Spring Security, JWT, Bucket4j | **Light Cloud** |
 | **ORM** | Spring Data JPA + Hibernate (PostgreSQL Dialect) | - |
 | **Database** | PostgreSQL 15+ | **Supabase** |
+| **Object Storage** | Cloud Storage Bucket | **Supabase Storage** |
 | **Repository** | Git | **GitHub** |
 
 ---
@@ -22,12 +23,10 @@ Aplikasi web terintegrasi untuk pelaporan barang hilang, publikasi barang temuan
 LFMS/
 ├── .github/workflows/ci.yml       # CI Pipeline GitHub Actions
 ├── .gitignore                     # Git ignore root
-├── render.yaml                    # Blueprint Render (Hosting Backend)
-├── railway.toml                   # Konfigurasi Railway (Hosting Backend)
 ├── SRS.md                         # Dokumen Analisis Kebutuhan Sistem
 │
 ├── BackendLFMS/                   # Backend (Spring Boot 3 / Java 21)
-│   ├── Dockerfile                 # Multi-stage Dockerfile (Render / Railway)
+│   ├── Dockerfile                 # Multi-stage Dockerfile (Light Cloud)
 │   ├── pom.xml                    # Maven configuration (PostgreSQL, Spring Boot)
 │   ├── API_DOCUMENTATION.md       # Dokumentasi endpoint & keamanan API
 │   ├── .env.example               # Contoh environment variable backend
@@ -36,9 +35,9 @@ LFMS/
 │       │   ├── config/            # Security, Rate Limiter, CORS, Seeder
 │       │   ├── controller/        # Auth, Report, Claim, User, Admin
 │       │   ├── entity/            # 7 entitas JPA relasional
-│       │   ├── repository/        # Spring Data JPA repositories
+│       │   ├── repository/        # Spring Data JPA repositories (@EntityGraph)
 │       │   ├── security/          # JWT filter & UserDetailsService
-│       │   └── service/           # Business logic & Audit logging
+│       │   └── service/           # Business logic, Supabase Storage & Audit logging
 │       └── main/resources/
 │           ├── application.properties
 │           └── schema.sql         # Skrip DDL Supabase PostgreSQL
@@ -74,61 +73,47 @@ git push -u origin main
 
 ---
 
-### Langkah 2: Setup Database di Supabase
+### Langkah 2: Setup Database & Storage di Supabase
 1. Buka [Supabase Dashboard](https://supabase.com/dashboard) dan buat project baru.
-2. Masuk ke **Project Settings** -> **Database**.
-3. Di bagian **Connection parameters / Connection string**, catat:
-   - **Host**: `db.<PROJECT-REF>.supabase.co`
-   - **User**: `postgres`
-   - **Password**: Password database Anda.
-4. (Opsional): Salin isi `BackendLFMS/src/main/resources/schema.sql` dan jalankan di **SQL Editor** Supabase.
+2. **Database**:
+   - Masuk ke **Project Settings** -> **Database**.
+   - Di bagian **Connection parameters / Connection string**, catat Host, User (`postgres`), dan Password.
+   - (Opsional): Salin isi `BackendLFMS/src/main/resources/schema.sql` dan jalankan di **SQL Editor** Supabase.
+3. **Storage (Foto Barang)**:
+   - Masuk ke menu **Storage** -> Buat bucket baru bernama `reports`.
+   - Pastikan opsi **Public bucket** diaktifkan.
+   - Masuk ke **Project Settings** -> **API**, salin **Project URL** dan **Secret key** (`sb_secret_...` / `service_role`).
 
 ---
 
-### Langkah 3: Hosting Backend di Render atau Railway
-
-#### Pilihan A: Menggunakan Render
-1. Masuk ke [dashboard.render.com](https://dashboard.render.com).
-2. Klik **New +** -> **Web Service** -> Hubungkan dengan repository GitHub Anda.
-3. Konfigurasi:
-   - **Root Directory**: `BackendLFMS`
-   - **Runtime**: `Docker` (akan otomatis membaca `BackendLFMS/Dockerfile`)
-   - **Region**: Singapore
-   - **Instance Type**: Free
-4. Tambahkan **Environment Variables** di dashboard Render:
+### Langkah 3: Hosting Backend di Light Cloud
+1. Hubungkan repository GitHub Anda ke workspace / project di **Light Cloud**.
+2. Pastikan build menggunakan Dockerfile pada path `BackendLFMS/Dockerfile`.
+3. Tambahkan **Environment Variables** di dashboard Light Cloud:
    - `DB_URL`: `jdbc:postgresql://db.<PROJECT-REF>.supabase.co:5432/postgres?sslmode=require`
    - `DB_USERNAME`: `postgres`
    - `DB_PASSWORD`: `<PASSWORD_SUPABASE_ANDA>`
    - `JWT_SECRET`: `9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b`
-   - `CORS_ORIGINS`: URL frontend Anda (misal: `https://lfms.pages.dev`)
+   - `CORS_ORIGINS`: URL domain Frontend Anda (misal: `https://lfms.atasraihan.my.id`)
+   - `SUPABASE_URL`: `https://<PROJECT-REF>.supabase.co`
+   - `SUPABASE_SERVICE_ROLE_KEY`: `sb_secret_...`
+   - `SUPABASE_STORAGE_BUCKET`: `reports`
    - `ADMIN_EMAIL`: `admin@lfms.id`
    - `ADMIN_PASSWORD`: `Admin@12345`
-5. Klik **Create Web Service**. Catat URL backend Anda (misal: `https://lfms-backend.onrender.com`).
-
-#### Pilihan B: Menggunakan Railway
-1. Masuk ke [railway.app](https://railway.app).
-2. Klik **New Project** -> **Deploy from GitHub repo**.
-3. Masuk ke **Settings** service:
-   - **Root Directory**: `BackendLFMS`
-   - Railway otomatis mendeteksi `Dockerfile` dan `railway.toml`.
-4. Masuk ke tab **Variables** dan isi environment variables yang sama seperti di atas.
-5. Generate domain publik di tab **Settings** -> **Networking** -> **Generate Domain**.
 
 ---
 
 ### Langkah 4: Hosting Frontend di Cloudflare Pages
-1. Masuk ke [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Compute (Workers & Pages)** -> **Pages**.
-2. Klik **Connect to Git** dan pilih repository GitHub Anda.
+1. Masuk ke [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** -> **Pages**.
+2. Hubungkan repository GitHub Anda.
 3. Konfigurasi Build Settings:
-   - **Project Name**: `lfms` (atau nama pilihan Anda)
-   - **Production Branch**: `main`
    - **Framework Preset**: `Vite`
    - **Root Directory**: `FrontendLFMS`
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
 4. Tambahkan **Environment Variable**:
-   - `VITE_API_BASE_URL`: URL Backend Anda ditambah `/api` (misal: `https://lfms-backend.onrender.com/api`)
-5. Klik **Save and Deploy**. Cloudflare Pages otomatis men-deploy dan memberikan URL seperti `https://lfms.pages.dev`.
+   - `VITE_API_BASE_URL`: URL Backend Light Cloud Anda ditambah `/api` (misal: `https://main-lfms-rzhfxvs-workspace.light-cloud.io/api`)
+5. Klik **Save and Deploy**.
 
 > **Catatan Routing SPA**: Berkas `FrontendLFMS/public/_redirects` telah disiapkan agar reload pada rute client-side (seperti `/reports/1` atau `/dashboard`) tidak menghasilkan 404 pada Cloudflare Pages.
 
@@ -149,7 +134,7 @@ cd FrontendLFMS
 npm install
 npm run dev
 ```
-Frontend berjalan pada `http://localhost:5173`. Request `/api/*` otomatis di-proxy ke port 8080.
+Frontend berjalan pada `http://localhost:5173`. Request `/api/*` otomatis di-proxy ke backend port 8080.
 
 ---
 
@@ -158,4 +143,4 @@ Frontend berjalan pada `http://localhost:5173`. Request `/api/*` otomatis di-pro
 - **IDOR Protection**: Validasi ketat kepemilikan resource (laporan, klaim, notifikasi).
 - **Private Data Protection (BR-07)**: Detail verifikasi barang temuan disimpan di tabel terpisah dan hanya dapat diakses oleh Admin & pelapor.
 - **Audit Logging**: Setiap aksi krusial dicatat ke tabel `audit_logs` lengkap dengan IP address.
-- **File Upload Security**: Pembatasan MIME type, ekstensi, batas ukuran 5MB, dan nama file acak UUID.
+- **File Upload Security**: Pembatasan MIME type, ekstensi, batas ukuran 5MB, penyimpanan aman di Supabase Storage CDN.
