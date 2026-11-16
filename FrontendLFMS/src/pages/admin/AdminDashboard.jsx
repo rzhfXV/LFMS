@@ -19,6 +19,9 @@ export const AdminDashboard = () => {
   const [reviewClaimModal, setReviewClaimModal] = useState(null);
   const [adminNote, setAdminNote] = useState('');
 
+  // Serah Terima Barang
+  const [completeClaimModal, setCompleteClaimModal] = useState(null);
+
   useEffect(() => {
     fetchAdminData();
   }, []);
@@ -76,9 +79,10 @@ export const AdminDashboard = () => {
   };
 
   const handleCompleteClaim = async (claimId) => {
-    if (!window.confirm('Konfirmasi bahwa barang telah diserahkan kepada pemiliknya?')) return;
+    if (!completeClaimModal) return;
     try {
       await apiClient.patch(`/admin/claims/${claimId}/complete`);
+      setCompleteClaimModal(null);
       fetchAdminData();
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal menyelesaikan serah terima.');
@@ -184,15 +188,11 @@ export const AdminDashboard = () => {
             onClick={() => setActiveTab('handover')}
             className={`pb-4 border-b-2 transition ${
               activeTab === 'handover'
-                ? 'border-emerald-600 text-emerald-600'
+                ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Serah Terima Barang {approvedClaims.length > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-emerald-500 text-white rounded-full">
-                {approvedClaims.length}
-              </span>
-            )}
+            Serah Terima Barang ({approvedClaims.length})
           </button>
           <button
             onClick={() => setActiveTab('logs')}
@@ -296,7 +296,6 @@ export const AdminDashboard = () => {
             <div className="space-y-4">
               {approvedClaims.length === 0 ? (
                 <div className="text-center py-12">
-                  <PackageCheck className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                   <p className="text-sm text-gray-500">Tidak ada klaim yang menunggu serah terima.</p>
                 </div>
               ) : (
@@ -326,10 +325,9 @@ export const AdminDashboard = () => {
                         )}
                       </div>
                       <button
-                        onClick={() => handleCompleteClaim(c.id)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition"
+                        onClick={() => setCompleteClaimModal(c)}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition"
                       >
-                        <PackageCheck className="w-4 h-4" />
                         Konfirmasi Serah Terima
                       </button>
                     </div>
@@ -466,6 +464,73 @@ export const AdminDashboard = () => {
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md"
               >
                 Setujui Klaim
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Claim (Handover) Modal */}
+      {completeClaimModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
+                <PackageCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Konfirmasi Serah Terima Barang</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Pastikan identitas pengklaim dan fisik barang telah diverifikasi sebelum menyelesaikan proses ini.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-2 text-xs text-gray-700">
+              <div className="flex justify-between">
+                <span className="text-gray-500">ID Klaim:</span>
+                <span className="font-mono font-bold text-gray-900">#{completeClaimModal.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Barang Temuan:</span>
+                <span className="font-bold text-gray-900 text-right">{completeClaimModal.foundReportTitle}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Penerima / Pengklaim:</span>
+                <span className="font-semibold text-gray-900 text-right">
+                  {completeClaimModal.claimantName} ({completeClaimModal.claimantEmail})
+                </span>
+              </div>
+              {completeClaimModal.adminNote && (
+                <div className="pt-2 border-t border-gray-200">
+                  <span className="text-gray-500 block mb-1">Catatan Persetujuan:</span>
+                  <p className="text-indigo-800 bg-indigo-50 p-2 rounded-lg">{completeClaimModal.adminNote}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-800">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p>
+                Tindakan ini akan menandai klaim sebagai <strong>SELESAI</strong> dan memperbarui status barang menjadi telah dikembalikan. Tindakan tidak dapat dibatalkan.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCompleteClaimModal(null)}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleCompleteClaim}
+                className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md transition"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Selesaikan Serah Terima
               </button>
             </div>
           </div>
