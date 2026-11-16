@@ -19,10 +19,12 @@ import id.rzhf.projecti.repository.ReportPrivateDetailRepository;
 import id.rzhf.projecti.repository.ReportRepository;
 import id.rzhf.projecti.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -52,8 +56,35 @@ public class ReportService {
             LocalDate eventDate, String keyword, int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Report> result = reportRepository.findPublicReports(
-                ReportStatus.PUBLISHED, type, categoryId, location, eventDate, keyword, pageable);
+
+        Specification<Report> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("status"), ReportStatus.PUBLISHED));
+
+            if (type != null) {
+                predicates.add(cb.equal(root.get("type"), type));
+            }
+            if (categoryId != null) {
+                predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+            }
+            if (location != null && !location.trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("location")), "%" + location.trim().toLowerCase() + "%"));
+            }
+            if (eventDate != null) {
+                predicates.add(cb.equal(root.get("eventDate"), eventDate));
+            }
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String pattern = "%" + keyword.trim().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("title")), pattern),
+                        cb.like(cb.lower(root.get("description")), pattern)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Report> result = reportRepository.findAll(spec, pageable);
 
         return toPageResponse(result);
     }

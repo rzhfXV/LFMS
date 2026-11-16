@@ -5,8 +5,10 @@ import id.rzhf.projecti.enums.ReportStatus;
 import id.rzhf.projecti.enums.ReportType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ReportRepository extends JpaRepository<Report, Long> {
+public interface ReportRepository extends JpaRepository<Report, Long>, JpaSpecificationExecutor<Report> {
 
     @EntityGraph(attributePaths = {"user", "category", "privateDetail"})
     Page<Report> findByUserId(Long userId, Pageable pageable);
@@ -30,28 +32,11 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     @Override
     @EntityGraph(attributePaths = {"user", "category", "privateDetail"})
-    Optional<Report> findById(Long id);
+    Page<Report> findAll(Specification<Report> spec, Pageable pageable);
 
+    @Override
     @EntityGraph(attributePaths = {"user", "category", "privateDetail"})
-    @Query("""
-        SELECT r FROM Report r
-        WHERE r.status = :status
-          AND (:type IS NULL OR r.type = :type)
-          AND (:categoryId IS NULL OR r.category.id = :categoryId)
-          AND (:location IS NULL OR LOWER(r.location) LIKE LOWER(CONCAT('%', :location, '%')))
-          AND (:eventDate IS NULL OR r.eventDate = :eventDate)
-          AND (:keyword IS NULL OR LOWER(r.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-               OR LOWER(r.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
-        """)
-    Page<Report> findPublicReports(
-            @Param("status") ReportStatus status,
-            @Param("type") ReportType type,
-            @Param("categoryId") Long categoryId,
-            @Param("location") String location,
-            @Param("eventDate") LocalDate eventDate,
-            @Param("keyword") String keyword,
-            Pageable pageable
-    );
+    Optional<Report> findById(Long id);
 
     @Query("SELECT COUNT(r) FROM Report r WHERE r.status = :status")
     long countByStatus(@Param("status") ReportStatus status);
