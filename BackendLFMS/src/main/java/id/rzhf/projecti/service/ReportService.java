@@ -46,6 +46,7 @@ public class ReportService {
 
     // ── Public ─────────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public PageResponse<ReportResponse> findPublic(
             ReportType type, Long categoryId, String location,
             LocalDate eventDate, String keyword, int page, int size) {
@@ -57,6 +58,7 @@ public class ReportService {
         return toPageResponse(result);
     }
 
+    @Transactional(readOnly = true)
     public ReportResponse findPublicById(Long id) {
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found"));
@@ -170,6 +172,7 @@ public class ReportService {
         reportRepository.delete(report);
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<ReportResponse> findMyReports(String userEmail, int page, int size) {
         User user = getUserByEmail(userEmail);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -177,6 +180,7 @@ public class ReportService {
         return toPageResponse(result);
     }
 
+    @Transactional(readOnly = true)
     public ReportResponse findMyReportById(Long id, String userEmail) {
         User user = getUserByEmail(userEmail);
         Report report = getReportById(id);
@@ -188,6 +192,7 @@ public class ReportService {
 
     // ── Admin ───────────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public PageResponse<ReportResponse> findAll(ReportStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Report> result = (status != null)
@@ -196,6 +201,7 @@ public class ReportService {
         return toPageResponse(result);
     }
 
+    @Transactional(readOnly = true)
     public ReportResponse findById(Long id) {
         return ReportResponse.from(getReportById(id), true);
     }

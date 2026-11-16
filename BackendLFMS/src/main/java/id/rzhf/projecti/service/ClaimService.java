@@ -79,6 +79,7 @@ public class ClaimService {
         return ClaimResponse.from(saved);
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<ClaimResponse> findMyClaims(String userEmail, int page, int size) {
         User user = getUserByEmail(userEmail);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -86,6 +87,7 @@ public class ClaimService {
         return toPageResponse(result);
     }
 
+    @Transactional(readOnly = true)
     public ClaimResponse findMyClaimById(Long id, String userEmail) {
         User user = getUserByEmail(userEmail);
         Claim claim = claimRepository.findByIdAndClaimantId(id, user.getId())
@@ -110,6 +112,7 @@ public class ClaimService {
 
     // ── Admin ───────────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public PageResponse<ClaimResponse> findAll(ClaimStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Claim> result = (status != null)
@@ -118,6 +121,7 @@ public class ClaimService {
         return toPageResponse(result);
     }
 
+    @Transactional(readOnly = true)
     public ClaimResponse findById(Long id) {
         Claim claim = claimRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Claim not found"));

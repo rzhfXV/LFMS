@@ -43,6 +43,7 @@ public class AdminService {
 
     // ── Dashboard ───────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public DashboardResponse getDashboard() {
         long totalLost = reportRepository.countByTypeAndStatus(ReportType.LOST, ReportStatus.PUBLISHED);
         long totalFound = reportRepository.countByTypeAndStatus(ReportType.FOUND, ReportStatus.PUBLISHED);
@@ -68,6 +69,7 @@ public class AdminService {
 
     // ── User Management ─────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public PageResponse<UserResponse> findAllUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<User> result = userRepository.findAll(pageable);
@@ -101,6 +103,7 @@ public class AdminService {
 
     // ── Audit Logs ──────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public PageResponse<AuditLogResponse> getAuditLogs(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<AuditLog> result = auditLogRepository.findByOrderByCreatedAtDesc(pageable);
