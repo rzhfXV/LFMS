@@ -526,7 +526,7 @@ export const AdminDashboard = () => {
               </button>
               <button
                 type="button"
-                onClick={handleCompleteClaim}
+                onClick={() => handleCompleteClaim(completeClaimModal.id)}
                 className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md transition"
               >
                 <CheckCircle2 className="w-4 h-4" />
